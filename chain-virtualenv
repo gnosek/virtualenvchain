@@ -1,0 +1,33 @@
+#!/bin/bash
+
+src_venv_dir=${1%/}
+new_venv_dir=${2%/}
+pyver=$3
+
+src_hashbang="#!$src_venv_dir/"
+new_hashbang="#!$new_venv_dir/"
+src_venv_name=`basename $src_venv_dir`
+libdir="lib/python$pyver/site-packages" 
+
+echo "$src_venv_dir/$libdir" > "$new_venv_dir/$libdir/$src_venv_name.pth"
+
+for i in $src_venv_dir/bin/*
+do
+    dest="$new_venv_dir/bin/$(basename $i)"
+    if [ ! -e "$dest" ]
+    then
+        hashbang=`head -c 2 $i`
+        if [ "$hashbang" = "#!" ]
+        then
+            sed -e "1s;^$src_hashbang;$new_hashbang;" < $i > $dest
+            if grep -q 'EASY-INSTALL-ENTRY-SCRIPT' $dest
+            then
+                sed -i -e '/__name__/!s/==[0-9.]*//g' $dest
+            fi
+            chmod --reference=$i $dest 
+       else
+            ln -s $i $new_venv_dir/bin
+        fi
+    fi
+done
+
